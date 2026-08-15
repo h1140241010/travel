@@ -1,0 +1,88 @@
+name: Add FuFu itinerary
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-fufu-itinerary.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update 10/13 itinerary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          from urllib.parse import quote
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace('<div class="label">七寶・超市</div>', '<div class="label">七寶・FuFu・超市</div>', 1)
+          s = s.replace('10/13 Tue｜七寶老街＋大潤發補貨夜', '10/13 Tue｜七寶老街＋FuFu 麵包＋大潤發', 1)
+          s = s.replace('今天終於可以睡晚一點。白天吃七寶小吃，下午休息，晚上再去超市大採買。', '今天終於可以睡晚一點。白天吃七寶小吃，接著去靜安寺買 FuFu 麵包，再打車去大潤發採買。', 1)
+
+          old_pattern = re.compile(r'<details class="stop"><summary><div class="stop-icon">🚇</div><div><div class="stop-title">七寶 → 老西門 → 飯店</div>.*?</details>', re.S)
+
+          fufu_addr = '静安寺街道南京西路1601号芮欧百货B250'
+          fufu_map = 'https://uri.amap.com/search?keyword=' + quote('FuFu in the house ' + fufu_addr) + '&city=' + quote('上海') + '&callnative=1'
+
+          replacement = f'''<details class="stop">
+          <summary><div class="stop-icon">🚇</div><div><div class="stop-title">七寶 → 靜安寺</div><div class="stop-meta">9 號線 → 肇嘉浜路轉 7 號線｜約 31 分｜¥4</div></div><div class="chev">⌄</div></summary>
+          <div class="stop-body">
+            <p>七寶老街逛完後，從七寶站搭地鐵前往靜安寺。先搭 <b>9 號線往曹路方向</b>，到肇嘉浜路站內轉乘 <b>7 號線往美蘭湖方向</b>，再坐 2 站到靜安寺。</p>
+            <div class="route-card">
+              <div class="route-head"><span class="line-badge line9">9 號線・淡藍</span>七寶 → 肇嘉浜路</div>
+              <div class="metro metro9">
+                <div class="metro-stop strong">七寶</div><div class="metro-stop">星中路</div><div class="metro-stop">合川路</div><div class="metro-stop">漕河涇開發區</div><div class="metro-stop">桂林路</div><div class="metro-stop">宜山路</div><div class="metro-stop">徐家匯</div><div class="metro-stop strong">肇嘉浜路｜轉乘 7 號線</div>
+              </div>
+              <div class="transfer">⇄ 肇嘉浜路站內轉乘：9 號線 → 7 號線</div>
+              <div class="route-head"><span class="line-badge" style="background:#f7e4dc;color:#a4553b;border:1px solid #e4b9a9">7 號線</span>肇嘉浜路 → 靜安寺</div>
+              <div class="metro" style="--route:#ef8354;--route-dark:#a84f31">
+                <div class="metro-stop strong">肇嘉浜路</div><div class="metro-stop">常熟路</div><div class="metro-stop strong">靜安寺</div>
+              </div>
+            </div>
+            <div class="pills"><span class="pill">約 31 min</span><span class="pill">¥4</span><span class="pill purple">轉乘 1 次</span></div>
+          </div>
+        </details>
+
+        <details class="stop">
+          <summary><div class="stop-icon">🥐</div><div><div class="stop-title">FuFu in the house｜買麵包</div><div class="stop-meta">靜安寺・芮歐百貨 B250</div></div><div class="chev">⌄</div></summary>
+          <div class="stop-body">
+            <p>七寶之後來這間好吃的麵包店補貨，買完再直接去大潤發。</p>
+            <div class="alert">🥖 今日任務：FuFu in the house 買麵包！</div>
+            <div class="shop-address">📍 {fufu_addr}<br><a class="shop-map" target="_blank" rel="noopener" href="{fufu_map}">高德地圖 ↗</a></div>
+          </div>
+        </details>'''
+
+          s, n = old_pattern.subn(replacement, s, count=1)
+          if n != 1:
+              raise SystemExit(f'old Qibao-return stop not found: {n}')
+
+          market_pattern = re.compile(r'<details class="stop"><summary><div class="stop-icon">🛒</div><div><div class="stop-title">晚上｜大潤發（平型關店）補貨</div>.*?</details>', re.S)
+          market_replacement = '''<details class="stop">
+          <summary><div class="stop-icon">🚕</div><div><div class="stop-title">FuFu in the house → 大潤發（平型關店）</div><div class="stop-meta">買完麵包後打車前往｜超市預計逛約 1 小時</div></div><div class="chev">⌄</div></summary>
+          <div class="stop-body">
+            <p>FuFu 買完麵包後直接叫車去大潤發（平型關店），不用先繞回飯店。</p>
+            <p>到大潤發後慢慢逛約 1 小時，零食、飲料、伴手禮、想帶回台灣的東西一次補齊；逛完再直接打車回飯店整理行李。</p>
+            <div class="pills"><span class="pill red">FuFu → 超市：打車</span><span class="pill">採買約 1 hr</span><span class="pill">逛完打車回飯店</span></div>
+          </div>
+        </details>'''
+          s, n2 = market_pattern.subn(market_replacement, s, count=1)
+          if n2 != 1:
+              raise SystemExit(f'market stop not found: {n2}')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Add FuFu bakery to Oct 13 itinerary" || exit 0
+          git push
