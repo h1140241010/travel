@@ -1,0 +1,26 @@
+name: Apply China Unicom phone note
+
+on:
+  push:
+    paths:
+      - '.github/scripts/patch_phone_unicom.py'
+      - '.github/workflows/apply-phone-unicom.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: python .github/scripts/patch_phone_unicom.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Add China Unicom phone note to Oct 8"
+          git push
